@@ -1,0 +1,66 @@
+#define SENSOR_PIN 34        // ADC1 pin (recommended: 32–39)
+#define NUM_AVG 500         // Averaging for noise reduction
+#define RESISTOR_VALUE 150 // Ohms
+#define ADC_MAX 4095.0       // ESP32 12-bit ADC
+#define ADC_REF  3.417          // ESP32 reference voltage (approx)
+
+// ===============================
+void setup() {
+  Serial.begin(115200);
+  delay(1000);
+
+  // Configure ADC
+  analogReadResolution(12);                 // 0–4095
+  analogSetPinAttenuation(SENSOR_PIN, ADC_11db); //~0–3.3V input
+
+  Serial.println("ESP32 4–20mA Pressure Sensor");
+  Serial.println("--------------------------------");
+}
+
+// ===============================
+void readSensor() {
+  uint32_t adc_sum = 0;
+
+  for (int i = 0; i < NUM_AVG; i++) {
+    adc_sum += analogRead(SENSOR_PIN);
+  }
+
+  float adc_avg = ((float)adc_sum / NUM_AVG) + 0.5; //To make it round up
+
+  // Convert ADC to voltage
+  float voltage_value = (adc_avg / ADC_MAX) * ADC_REF;
+
+  // Convert voltage to current (mA)
+  float current_mA = (voltage_value / RESISTOR_VALUE) * 1000.0;
+
+  // Convert 4–20mA to percentage (0–100%)
+  float percentage = (current_mA)*6.25-25;
+
+  // Clamp values (safety)
+  if (percentage < 0) percentage = 0;
+  if (percentage > 100) percentage = 100;
+
+  // ===============================
+  // SERIAL OUTPUT
+  // ===============================
+  Serial.print("ADC Avg: ");
+  Serial.print(adc_avg, 1);
+
+  Serial.print(" | Voltage: ");
+  Serial.print(voltage_value, 3);
+  Serial.print(" V");
+
+  Serial.print(" | Current: ");
+  Serial.print(current_mA, 3);
+  Serial.print(" mA");
+
+  Serial.print(" | Pressure: ");
+  Serial.print(percentage, 2);
+  Serial.println(" %");
+}
+
+// ===============================
+void loop() {
+  readSensor();
+  delay(1000);
+}
